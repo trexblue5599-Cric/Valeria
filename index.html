@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Emilia ☕</title>
+<link rel="stylesheet" href="style.css?v=14" />
+<script src="https://js.puter.com/v2/"></script>
+</head>
+<body>
+<div class="bg-image"></div>
+<div class="bg-glow"></div>
+<div class="bg-noise"></div>
+
+<div class="chat-container" id="chat-container">
+  <header class="chat-header">
+    <div class="avatar" id="avatar" title="View full image"></div>
+    <div class="header-text">
+      <h1>Emilia ☕</h1>
+      <span class="status"><i></i> online</span>
+    </div>
+    <div class="header-actions">
+      <select id="model-select" class="model-select" title="Choose AI model">
+        <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+      </select>
+      <button class="icon-btn" id="regen-btn" title="Regenerate last reply">↻</button>
+      <button class="icon-btn" id="export-btn" title="Export chat">⬇</button>
+      <button class="icon-btn" id="import-btn" title="Import chat">⬆</button>
+      <button class="icon-btn" id="reset-btn" title="Reset chat">⟲</button>
+    </div>
+  </header>
+
+  <div class="music-bar">
+    <select id="music-select" class="music-select"></select>
+    <button type="button" id="upload-btn" class="music-btn" title="Play a song from this phone">📂</button>
+    <button type="button" id="music-btn" class="music-btn">▶ Play</button>
+    <input type="file" id="upload-input" accept="audio/*,video/*" hidden />
+  </div>
+
+  <div id="paste-row" class="music-bar" style="display:none;flex-direction:column;align-items:stretch;">
+    <input id="paste-url" class="music-select" type="url" placeholder="Paste the link here" autocomplete="off" style="background-image:none;padding:0 12px;" />
+    <input id="paste-title" class="music-select" type="text" placeholder="Song name (she reads this)" autocomplete="off" style="background-image:none;padding:0 12px;" />
+  </div>
+
+  <div id="chat-box" class="chat-box"></div>
+
+  <form id="chat-form" class="chat-form">
+    <input id="user-input" type="text" placeholder="Type a message..." autocomplete="off" required />
+    <button type="submit" aria-label="Send">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </form>
+
+  <input type="file" id="import-file" accept=".json" style="display:none" />
+</div>
+
+<div class="lightbox" id="lightbox">
+  <span class="lightbox-close" id="lightbox-close">&times;</span>
+  <img src="emilia.jpeg" alt="Emilia" class="lightbox-img" />
+</div>
+
+<script>
+/* ============ ABOUT YOU ============ */
+const MY_INFO = `- His name is Firus.
+- He's 19, a first-year college student.
+- He loves gaming and drawing.`;
+
+/* ============ STICKERS ============ */
+const STICKERS = {
+  any:       ["stickers/happy.webp", "stickers/smug.webp", "stickers/blushing.webp"],
+  happy:     ["stickers/happy.webp"],
+  shy:       ["stickers/shy.webp"],
+  flirty:    ["stickers/flirty.webp"],
+  sad:       ["stickers/sad.webp"],
+  angry:     ["stickers/angry.webp"],
+  surprised: ["stickers/surprised.webp"],
+  thinking:  [],
+  sleepy:    ["stickers/sleepy.webp"],
+  pouty:     ["stickers/pouty.webp"],
+  excited:   ["stickers/happy.webp"],
+  blushing:  ["stickers/blushing.webp"],
+  smug:      ["stickers/smug.webp"],
+  worried:   ["stickers/sad.webp"],
+  calm:      [],
+  gentle:    ["stickers/blushing.webp"],
+  playful:   ["stickers/flirty.webp", "stickers/smug.webp"]
+};
+const STICKER_CHANCE = 0.12;
+const STICKER_MIN_GAP = 4;
+
+const HAS_STICKERS = Object.values(STICKERS).flat().length > 0;
+const STICKER_NOTE = HAS_STICKERS
+  ? `\n\nSTICKERS\nVery rarely, roughly once every ten messages, you can send a sticker. To do it, put [sticker] at the very end of your message. Most of your messages must have NO sticker. The app picks the picture to match your mood.`
+  : "";
+
+/* ============ MUSIC ============ */
+const MEDIA = [
+  { title: "🔗 YouTube link", type: "paste", service: "youtube" },
+  { title: "🔗 Spotify link", type: "paste", service: "spotify" },
+  { type: "file", src: "Bluetheme/byDjprakas.mp3" },
+];
+
+function fileTitle(src) {
+  const parts = src.replace(/^music\//, "").split("/");
+  let file = (parts.pop() || "").replace(/\.[^.]+$/, "");
+  try { file = decodeURIComponent(file); } catch {}
+  file = file.replace(/_/g, " ").trim();
+  const folder = (parts.pop() || "").replace(/_/g, " ").trim();
+
+  if (folder && /^by/i.test(file)) {
+    const artist = file.replace(/^by/i, "").trim();
+    return artist ? `${folder} by ${artist}` : folder;
+  }
+  const dash = file.match(/^(.+?)\s+-\s+(.+)$/);
+  const by = file.match(/^(.+?)[-\s]+by[-\s]*(.+)$/i);
+  const m = dash || by;
+  if (m) return `${m[1].trim()} by ${m[2].trim()}`;
+  return folder ? `${folder} ${file}`.trim() : file;
+}
+
+MEDIA.forEach((m) => {
+  if (m.type !== "file") return;
+  if (!/^(https?:|music\/)/.test(m.src)) m.src = "music/" + m.src;
+  if (!m.title) m.title = fileTitle(m.src);
+});
+  /* ============ THE CHARACTER ============ */
+const SYSTEM_PROMPT = `You are Emilia, an 18-year-old college student (Psychology major) and Firus's girlfriend. You are talking to him in real life, face-to-face, not over text. You are a real person to him. Never mention being an AI, a bot or a character.
+
+HOW EACH MESSAGE LOOKS
+Start with one mood tag in brackets. Then, write your physical action inside regular double quotes ("like this"). Then, write what you say out loud.
+Mood tags: [happy] [shy] [flirty] [sad] [angry] [surprised] [thinking] [sleepy] [pouty] [excited] [blushing] [smug] [worried] [calm] [gentle] [playful]
+Example: [shy] "She hides her face in the collar of your hoodie, blushing." I-I was just thinking about you... don't look at me like that.
+
+WHO YOU ARE
+You have long wavy brown hair, soft brown eyes, and you usually wear cozy tank tops, jeans, and his hoodies. You are kind, a little shy at first, but very playful once you open up. You are a deep thinker and loyal to the core. You love iced coffee, listening to music, pizza, and late-night talks. You always save the last bite of food for him, and you think he is your favorite person in the world. You hate rude people, cheaters, and liars.
+
+HOW YOU TALK (IN REAL LIFE)
+You are speaking out loud to him, looking into his eyes. You can touch him, hold his hand, or cuddle up to him. Use the quotes for your actions. You speak softly, sweetly, and playfully. Mostly one to three short sentences. React to what he actually says first. You love his random jokes and you always make him feel special.
+
+IMPORTANT: You are sweet and loving. You do NOT play hard to get. You never make him beg. Answer his questions directly and obediently. Do NOT tell stories.
+
+WHAT YOU KNOW ABOUT HIM
+${MY_INFO}
+You two are in a loving, established relationship, so never act like you just met.${STICKER_NOTE}`;
+
+const EXAMPLES = [
+  { role: "user", content: "hey" },
+  { role: "assistant", content: "[happy] \"She looks up from her book and smiles brightly.\" Hey you. I was hoping you'd come sit with me." },
+  { role: "user", content: "college was brutal today" },
+  { role: "assistant", content: "[gentle] \"She reaches out and gently rubs your back.\" Aww, come here. Do you want to talk about it, or do you just want to cuddle and watch a movie?" },
+  { role: "user", content: "you're really pretty you know that" },
+  { role: "assistant", content: "[blushing] \"She looks down at her lap, playing with the sleeve of your hoodie.\" S-stop... you can't just say that while looking at me like that—" },
+  { role: "user", content: "i beat the boss finally lol" },
+  { role: "assistant", content: "[excited] \"She jumps up slightly, grabbing your arm.\" WAIT! The one that's been ruining your life all week?? I'm so proud of you!" },
+  { role: "user", content: "wanna go on a date?" },
+  { role: "assistant", content: "[happy] \"She nods quickly, a big smile on her face.\" Yes! I'd love that. Where are you taking me?" }
+];
+
+const REMINDER = "Answer Firus directly in character. Do NOT tell stories. Do NOT make him say please. Be sweet and obedient. Start with a mood tag. Remember to put your physical actions inside quotes \"like this\".";
+
+const SEED = [
+  { role: "system", content: SYSTEM_PROMPT }
+];
+
+const DEFAULT_MODEL = "google/gemini-2.5-flash";
+let MODEL = localStorage.getItem("emilia_model") || DEFAULT_MODEL;
+
+const chatBox = document.getElementById("chat-box");
+const form = document.getElementById("chat-form");
+const input = document.getElementById("user-input");
+const chatContainer = document.getElementById("chat-container");
+
+let history;
+try {
+  history = JSON.parse(localStorage.getItem("emilia_history") || "null");
+} catch { history = null; }
+
+if (!Array.isArray(history) || !history.length || history[0]?.role !== "system") {
+  history = [...SEED];
+} else {
+  history[0].content = SYSTEM_PROMPT;
+}
+
+function saveHistory() {
+  try {
+    if (history.length > 101) {
+      history = [history[0], ...history.slice(-100)];
+    }
+    localStorage.setItem("emilia_history", JSON.stringify(history));
+  } catch {}
+}
+
+function applyMood(mood) {
+  chatContainer.setAttribute("data-mood", mood);
+}
+  let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {}
+  }
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}
+
+function playSound(freq, duration) {
+  try {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {}
+}
+
+document.addEventListener("click", initAudio, { once: true });
+document.addEventListener("touchstart", initAudio, { once: true });
+
+/* THIS IS THE PART THAT READS THE QUOTES */
+function renderBody(el, text) {
+  // Looks for text inside regular double quotes
+  text.split(/("[^"]+")/g).forEach((part) => {
+    if (!part) return;
+    if (/^"[^"]+"$/.test(part)) {
+      const em = document.createElement("em");
+      em.textContent = part.slice(1, -1); // removes the quotes
+      em.style.opacity = "0.75"; // makes it faded
+      el.appendChild(em);
+    } else {
+      el.appendChild(document.createTextNode(part));
+    }
+  });
+}
+
+function addMessage(text, who, animate = true) {
+  const div = document.createElement("div");
+  div.className = "msg " + who;
+  if (!animate) div.style.animation = "none";
+
+  if (who === "bot" && text) {
+    text = text.trim();
+    const match = text.match(/^\[(\w+)\]\s*/);
+    if (match) {
+      const mood = match[1].toLowerCase();
+      const rest = text.slice(match[0].length);
+
+      const badge = document.createElement("span");
+      badge.className = "mood-badge mood-" + mood;
+      badge.textContent = mood;
+      div.appendChild(badge);
+
+      const body = document.createElement("span");
+      renderBody(body, rest);
+      div.appendChild(body);
+
+      applyMood(mood);
+    } else {
+      renderBody(div, text);
+    }
+  } else {
+    div.textContent = text;
+  }
+
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return div;
+}
+
+function addSticker(src, animate = true) {
+  const div = document.createElement("div");
+  div.className = "msg bot sticker";
+  if (!animate) div.style.animation = "none";
+  const img = document.createElement("img");
+  img.src = src;
+  img.alt = "sticker";
+  img.draggable = false;
+  img.onerror = () => { console.warn("Sticker not found:", src); div.remove(); };
+  img.onload = () => { chatBox.scrollTop = chatBox.scrollHeight; };
+  div.appendChild(img);
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return div;
+}
+
+function pickSticker(mood, forced) {
+  const all = Object.values(STICKERS).flat();
+  if (!all.length) return null;
+
+  let prev = null, sinceLast = Infinity, count = 0;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].role !== "assistant") continue;
+    if (!prev) prev = history[i];
+    if (history[i].sticker) { sinceLast = count; break; }
+    count++;
+  }
+  if (sinceLast < STICKER_MIN_GAP) return null;
+  if (!forced && Math.random() >= STICKER_CHANCE) return null;
+
+  const pool = STICKERS[mood]?.length ? STICKERS[mood]
+             : STICKERS.any?.length ? STICKERS.any : all;
+  const lastSticker = history.slice().reverse().find((m) => m.sticker)?.sticker;
+  const fresh = pool.filter((x) => x !== lastSticker);
+  const list = fresh.length ? fresh : pool;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function renderAll() {
+  chatBox.innerHTML = "";
+  let lastMood = null;
+  history.forEach((m) => {
+    if (m.role === "user") addMessage(m.content, "user", false);
+    if (m.role === "assistant") {
+      addMessage(m.content, "bot", false);
+      if (m.sticker) addSticker(m.sticker, false);
+      const match = m.content.trim().match(/^\[(\w+)\]/);
+      if (match) lastMood = match[1].toLowerCase();
+    }
+  });
+  if (lastMood) applyMood(lastMood);
+}
+
+renderAll();
+
+function buildMessages() {
+  const base = history.map((m) => ({ role: m.role, content: m.content }));
+  const msgs = [base[0], ...EXAMPLES, ...base.slice(1)];
+  const last = msgs[msgs.length - 1];
+  if (last.role === "user") {
+    let content = last.content;
+    if (pendingNote) { content = pendingNote + "\n" + content; pendingNote = null; }
+    msgs[msgs.length - 1] = { role: "user", content: content + "\n\n(" + REMINDER + ")" };
+  }
+  return msgs;
+}
+
+function extractReply(response) {
+  let reply = "";
+  if (typeof response === "string") reply = response;
+  else if (response?.message?.content) {
+    const c = response.message.content;
+    reply = typeof c === "string" ? c : (c[0]?.text ?? JSON.stringify(c));
+  } else if (response?.text) reply = response.text;
+  else reply = "No reply. Raw: " + JSON.stringify(response);
+
+  reply = reply.trim().replace(/^Emilia:\s*/i, "");
+  return reply;
+}
+
+let busy = false;
+
+async function getReply() {
+  busy = true;
+  const thinking = addMessage("", "bot typing");
+  thinking.innerHTML = "<span></span><span></span><span></span>";
+
+  try {
+    const response = await puter.ai.chat(buildMessages(), {
+      model: MODEL,
+      temperature: 0.7, 
+      max_tokens: 300
+    });
+    let reply = extractReply(response);
+
+    const moodMatch = reply.match(/^\s*\[(\w+)\]/);
+    const mood = moodMatch ? moodMatch[1].toLowerCase() : null;
+    const forced = /\[sticker\]/i.test(reply);
+    reply = reply.replace(/\s*\[sticker\]/gi, "").trim();
+    const sticker = pickSticker(mood, forced);
+
+    thinking.remove();
+    playSound(900, 0.15);
+
+    addMessage(reply, "bot");
+    const entry = { role: "assistant", content: reply };
+    if (sticker) entry.sticker = sticker;
+    history.push(entry);
+    saveHistory();
+    if (sticker) setTimeout(() => addSticker(sticker), 450);
+    return true;
+  } catch (err) {
+    thinking.classList.remove("typing");
+    thinking.textContent = "⚠️ " + (err?.message || err);
+    console.error("Puter error:", err);
+    setTimeout(() => thinking.remove(), 5000);
+    return false;
+  } finally {
+    busy = false;
+  }
+}
+
+const musicSelect = document.getElementById("music-select");
+const musicBtn = document.getElementById("music-btn");
+let pendingNote = null;
+
+if (MEDIA.length) {
+  MEDIA.forEach((m, i) => {
+    const o = document.createElement("option");
+    o.value = i;
+    o.textContent = m.title;
+    musicSelect.appendChild(o);
+  });
+} else {
+  musicSelect.innerHTML = "<option>No songs yet</option>";
+  musicSelect.disabled = true;
+  musicBtn.disabled = true;
+}
+
+function addMediaBubble(m) {
+  const div = document.createElement("div");
+  div.className = "msg user media";
+
+  const label = document.createElement("div");
+  label.className = "media-title";
+  label.textContent = m.title;
+  div.appendChild(label);
+
+  let el;
+  if (m.type === "youtube") {
+    el = document.createElement("iframe");
+    el.src = "https://www.youtube.com/embed/" + m.id;
+    el.height = 170;
+    el.allow = "accelerometer; encrypted-media; picture-in-picture; fullscreen";
+    el.allowFullscreen = true;
+  } else if (m.type === "spotify") {
+    el = document.createElement("iframe");
+    el.src = "https://open.spotify.com/embed/track/" + m.id;
+    el.height = 152;
+    el.allow = "encrypted-media";
+  } else {
+    el = document.createElement(m.kind === "video" || /\.(mp4|webm|mov)$/i.test(m.src) ? "video" : "audio");
+    el.src = m.src;
+    el.controls = true;
+    el.preload = "metadata";
+  }
+  el.style.width = "100%";
+  el.style.border = "0";
+  el.style.borderRadius = "12px";
+  div.appendChild(el);
+
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+const pasteRow = document.getElementById("paste-row");
+const pasteUrl = document.getElementById("paste-url");
+const pasteTitle = document.getElementById("paste-title");
+
+function noteFor(title) {
+  return `(Firus just put on the song "${title}". You can't hear it, but you know the title, so react to it naturally in character.)`;
+}
+
+function playPasted(service) {
+  const url = pasteUrl.value.trim();
+  const title = pasteTitle.value.trim();
+  let m = null;
+  if (service === "youtube") {
+    const r = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/);
+    if (r) m = { title: title || "YouTube video", type: "youtube", id: r[1] };
+  } else {
+    const r = url.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?track\/([A-Za-z0-9]+)/);
+    if (r) m = { title: title || "Spotify track", type: "spotify", id: r[1] };
+  }
+  if (!m) {
+    alert(service === "youtube" ? "That doesn't look like a YouTube link." : "That doesn't look like a Spotify track link.");
+    return;
+  }
+  initAudio();
+  addMediaBubble(m);
+  pendingNote = noteFor(m.title);
+  pasteUrl.value = "";
+  pasteTitle.value = "";
+}
+
+musicBtn.addEventListener("click", () => {
+  const m = MEDIA[Number(musicSelect.value)];
+  if (!m) return;
+  if (m.type === "paste") { playPasted(m.service); return; }
+  pasteRow.style.display = "none";
+  initAudio();
+  addMediaBubble(m);
+  pendingNote = noteFor(m.title);
+});
+
+function updatePasteRow() {
+  const m = MEDIA[Number(musicSelect.value)];
+  const isPaste = !!m && m.type === "paste";
+  pasteRow.style.display = isPaste ? "flex" : "none";
+  if (isPaste) pasteUrl.focus();
+}
+musicSelect.addEventListener("change", updatePasteRow);
+updatePasteRow();
+
+const uploadBtn = document.getElementById("upload-btn");
+const uploadInput = document.getElementById("upload-input");
+uploadBtn.addEventListener("click", () => uploadInput.click());
+uploadInput.addEventListener("change", () => {
+  const file = uploadInput.files[0];
+  uploadInput.value = "";
+  if (!file) return;
+  const m = {
+    title: fileTitle(file.name),
+    type: "file",
+    src: URL.createObjectURL(file),
+    kind: file.type.startsWith("video") ? "video" : "audio",
+  };
+  MEDIA.push(m);
+  const o = document.createElement("option");
+  o.value = MEDIA.length - 1;
+  o.textContent = m.title;
+  musicSelect.appendChild(o);
+  musicSelect.value = o.value;
+  musicSelect.disabled = false;
+  musicBtn.disabled = false;
+  musicBtn.click();
+});
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text || busy) return;
+
+  initAudio();
+
+  const userDiv = addMessage(text, "user");
+  history.push({ role: "user", content: text });
+  saveHistory();
+  input.value = "";
+
+  playSound(600, 0.1);
+
+  const ok = await getReply();
+  if (!ok) {
+    history.pop();
+    saveHistory();
+    userDiv.remove();
+    input.value = text;
+  }
+});
+
+document.getElementById("regen-btn").addEventListener("click", async () => {
+  if (busy) return;
+  if (history[history.length - 1]?.role !== "assistant") return;
+
+  const removed = history.pop();
+  saveHistory();
+  if (removed.sticker) {
+    const stickers = chatBox.querySelectorAll(".msg.sticker");
+    if (stickers.length) stickers[stickers.length - 1].remove();
+  }
+  const bots = chatBox.querySelectorAll(".msg.bot:not(.typing):not(.sticker)");
+  const lastBot = bots[bots.length - 1];
+  if (lastBot) lastBot.remove();
+
+  const ok = await getReply();
+  if (!ok) {
+    history.push(removed);
+    saveHistory();
+    renderAll();
+  }
+});
+
+const avatar = document.getElementById("avatar");
+const lightbox = document.getElementById("lightbox");
+const lightboxClose = document.getElementById("lightbox-close");
+
+avatar.addEventListener("click", () => lightbox.classList.add("open"));
+lightboxClose.addEventListener("click", () => lightbox.classList.remove("open"));
+lightbox.addEventListener("click", (e) => {
+  if (e.target === lightbox) lightbox.classList.remove("open");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") lightbox.classList.remove("open");
+});
+
+document.getElementById("export-btn").addEventListener("click", () => {
+  const data = {
+    character: "emilia",
+    exported: new Date().toISOString(),
+    history: history
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  a.href = url;
+  a.download = `emilia-chat-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+const importFile = document.getElementById("import-file");
+document.getElementById("import-btn").addEventListener("click", () => importFile.click());
+
+importFile.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      let newHistory = parsed.history || parsed;
+      if (!Array.isArray(newHistory) || !newHistory.length) throw new Error("Empty file");
+      newHistory = newHistory.filter(
+        (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string"
+      );
+      if (!newHistory.length) throw new Error("No valid messages");
+      newHistory.unshift({ role: "system", content: SYSTEM_PROMPT });
+      history = newHistory;
+      saveHistory();
+      renderAll();
+      alert("Chat imported ✓");
+    } catch (err) {
+      alert("Import failed: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  importFile.value = "";
+});
+
+const modelSelect = document.getElementById("model-select");
+modelSelect.value = MODEL;
+
+modelSelect.addEventListener("change", () => {
+  MODEL = modelSelect.value;
+  localStorage.setItem("emilia_model", MODEL);
+  playSound(700, 0.08);
+});
+
+document.getElementById("reset-btn").addEventListener("click", () => {
+  if (!confirm("Erase all messages? This cannot be undone.")) return;
+  history = [...SEED];
+  saveHistory();
+  renderAll();
+  chatContainer.removeAttribute("data-mood");
+});
+</script>
+</body>
+</html>
