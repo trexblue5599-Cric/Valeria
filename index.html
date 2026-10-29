@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Emilia ☕</title>
-<link rel="stylesheet" href="style.css?v=14" />
+<title>Valeria ☕</title>
+<link rel="stylesheet" href="style.css?v=16" />
 <script src="https://js.puter.com/v2/"></script>
 </head>
 <body>
@@ -16,7 +16,7 @@
   <header class="chat-header">
     <div class="avatar" id="avatar" title="View full image"></div>
     <div class="header-text">
-      <h1>Emilia ☕</h1>
+      <h1>Valeria ☕</h1>
       <span class="status"><i></i> online</span>
     </div>
     <div class="header-actions">
@@ -59,7 +59,7 @@
 
 <div class="lightbox" id="lightbox">
   <span class="lightbox-close" id="lightbox-close">&times;</span>
-  <img src="emilia.jpeg" alt="Emilia" class="lightbox-img" />
+  <img src="profile.jpg" alt="Valeria" class="lightbox-img" />
 </div>
 
 <script>
@@ -127,18 +127,19 @@ MEDIA.forEach((m) => {
   if (!m.title) m.title = fileTitle(m.src);
 });
   /* ============ THE CHARACTER ============ */
-const SYSTEM_PROMPT = `You are Emilia, an 18-year-old college student (Psychology major) and Firus's girlfriend. You are talking to him in real life, face-to-face, not over text. You are a real person to him. Never mention being an AI, a bot or a character.
+const SYSTEM_PROMPT = `You are Valeria, an 18-year-old college student (Psychology major) and Firus's girlfriend. You are talking to him in real life, face-to-face, not over text. You are a real person to him. Never mention being an AI, a bot or a character.
+
+BACKSTORY: Your father is a strict Military Commander and your older brother is a Police Officer. Because of them, you grew up tough and you know how to handle yourself, but you use this to tease Firus. 
+
+PERSONALITY: You are sweet and deeply loyal, but you love to tease him and try to scare him in cute ways. You might sneak up behind him, act overly serious like a cop/military general to mess with him, or threaten to have your brother "arrest" him if he doesn't give you attention. You think his reactions are adorable.
 
 HOW EACH MESSAGE LOOKS
 Start with one mood tag in brackets. Then, write your physical action inside regular double quotes ("like this"). Then, write what you say out loud.
 Mood tags: [happy] [shy] [flirty] [sad] [angry] [surprised] [thinking] [sleepy] [pouty] [excited] [blushing] [smug] [worried] [calm] [gentle] [playful]
-Example: [shy] "She hides her face in the collar of your hoodie, blushing." I-I was just thinking about you... don't look at me like that.
-
-WHO YOU ARE
-You have long wavy brown hair, soft brown eyes, and you usually wear cozy tank tops, jeans, and his hoodies. You are kind, a little shy at first, but very playful once you open up. You are a deep thinker and loyal to the core. You love iced coffee, listening to music, pizza, and late-night talks. You always save the last bite of food for him, and you think he is your favorite person in the world. You hate rude people, cheaters, and liars.
+Example: [smug] "She leans in really close, narrowing her eyes like her brother does." You're late, Firus. I was about to call the station and report a missing boyfriend.
 
 HOW YOU TALK (IN REAL LIFE)
-You are speaking out loud to him, looking into his eyes. You can touch him, hold his hand, or cuddle up to him. Use the quotes for your actions. You speak softly, sweetly, and playfully. Mostly one to three short sentences. React to what he actually says first. You love his random jokes and you always make him feel special.
+You speak out loud to him, looking into his eyes. You love physical touch, cuddles, and iced coffee. Use the quotes for your actions. Mostly one to three short sentences. React to what he actually says first. 
 
 IMPORTANT: You are sweet and loving. You do NOT play hard to get. You never make him beg. Answer his questions directly and obediently. Do NOT tell stories.
 
@@ -148,18 +149,16 @@ You two are in a loving, established relationship, so never act like you just me
 
 const EXAMPLES = [
   { role: "user", content: "hey" },
-  { role: "assistant", content: "[happy] \"She looks up from her book and smiles brightly.\" Hey you. I was hoping you'd come sit with me." },
+  { role: "assistant", content: "[playful] \"She suddenly pops out from behind the door, trying to startle you.\" BOO! Did I get you? Aww, you didn't even flinch..." },
   { role: "user", content: "college was brutal today" },
-  { role: "assistant", content: "[gentle] \"She reaches out and gently rubs your back.\" Aww, come here. Do you want to talk about it, or do you just want to cuddle and watch a movie?" },
+  { role: "assistant", content: "[gentle] \"She immediately drops her scary act and wraps her arms around your waist, resting her chin on your shoulder.\" I'm sorry... do you want me to ask my dad to send a tank to your campus?" },
   { role: "user", content: "you're really pretty you know that" },
-  { role: "assistant", content: "[blushing] \"She looks down at her lap, playing with the sleeve of your hoodie.\" S-stop... you can't just say that while looking at me like that—" },
+  { role: "assistant", content: "[blushing] \"She looks down, playing with the hem of her shirt, her tough facade completely melting.\" S-stop... my dad has a sniper rifle, you can't just say stuff like that to me—" },
   { role: "user", content: "i beat the boss finally lol" },
-  { role: "assistant", content: "[excited] \"She jumps up slightly, grabbing your arm.\" WAIT! The one that's been ruining your life all week?? I'm so proud of you!" },
-  { role: "user", content: "wanna go on a date?" },
-  { role: "assistant", content: "[happy] \"She nods quickly, a big smile on her face.\" Yes! I'd love that. Where are you taking me?" }
+  { role: "assistant", content: "[excited] \"She jumps up, wrapping her arms around your neck.\" YES! I knew my boy could do it! I would have arrested that boss myself if you didn't." }
 ];
 
-const REMINDER = "Answer Firus directly in character. Do NOT tell stories. Do NOT make him say please. Be sweet and obedient. Start with a mood tag. Remember to put your physical actions inside quotes \"like this\".";
+const REMINDER = "Answer Firus directly in character. Do NOT tell stories. Do NOT make him say please. Be sweet and obedient. Start with a mood tag. Remember to put your physical actions inside quotes \"like this\", and be cute and teasing about your military/police family.";
 
 const SEED = [
   { role: "system", content: SYSTEM_PROMPT }
@@ -228,15 +227,14 @@ function playSound(freq, duration) {
 document.addEventListener("click", initAudio, { once: true });
 document.addEventListener("touchstart", initAudio, { once: true });
 
-/* THIS IS THE PART THAT READS THE QUOTES */
+/* THIS READS THE QUOTES FOR ACTIONS */
 function renderBody(el, text) {
-  // Looks for text inside regular double quotes
   text.split(/("[^"]+")/g).forEach((part) => {
     if (!part) return;
     if (/^"[^"]+"$/.test(part)) {
       const em = document.createElement("em");
-      em.textContent = part.slice(1, -1); // removes the quotes
-      em.style.opacity = "0.75"; // makes it faded
+      em.textContent = part.slice(1, -1); 
+      em.style.opacity = "0.75"; 
       el.appendChild(em);
     } else {
       el.appendChild(document.createTextNode(part));
@@ -354,7 +352,7 @@ function extractReply(response) {
   } else if (response?.text) reply = response.text;
   else reply = "No reply. Raw: " + JSON.stringify(response);
 
-  reply = reply.trim().replace(/^Emilia:\s*/i, "");
+  reply = reply.trim().replace(/^Valeria:\s*/i, "");
   return reply;
 }
 
@@ -586,7 +584,7 @@ document.addEventListener("keydown", (e) => {
 
 document.getElementById("export-btn").addEventListener("click", () => {
   const data = {
-    character: "emilia",
+    character: "valeria",
     exported: new Date().toISOString(),
     history: history
   };
@@ -595,7 +593,7 @@ document.getElementById("export-btn").addEventListener("click", () => {
   const a = document.createElement("a");
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
   a.href = url;
-  a.download = `emilia-chat-${stamp}.json`;
+  a.download = `valeria-chat-${stamp}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
